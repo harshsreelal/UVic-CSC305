@@ -338,7 +338,8 @@ function drawAstronaut() {
 
     let floatAmplitude = 1.5;  // Adjust height of floating
     let floatSpeed = 0.5;      // Adjust speed of floating
-    let floatOffset = floatAmplitude * Math.sin(TIME * floatSpeed);
+    // let floatOffset = floatAmplitude * Math.sin(TIME * floatSpeed);
+    let floatOffset = 0;
 
     gPush();
 		gTranslate(cubePosition[0] + floatOffset, cubePosition[1] + floatOffset, cubePosition[2]);
@@ -367,19 +368,50 @@ function drawAstronaut() {
         gPush();
             {
                 gTranslate(cubePosition[0] - 1.25, cubePosition[1] + 0.5, cubePosition[2] + 0.5);
-                gPush();
+                
+                gPush(); // NASA Patch
                     {
                         setColor(vec4(0.0, 0.0, 1.0, 1.0));
 
                         // gRotate(-20, 0, 1, 0);
-                        gScale(0.2, 0.2, 0.01);
+                        gScale(0.15, 0.15, 0.01);
+                        drawSphere();
+                    }
+                gPop();
+                
+                gPush(); // Other buttons - Top 
+                    {
+                        setColor(vec4(0.0, 0.0, 1.0, 1.0));
+                        gTranslate(0.075, -0.4, 0)
+                        gScale(0.1, 0.1, 0.1);
+                        drawSphere();
+
+                        gTranslate(3.5, 0, 0)
                         drawSphere();
                     }
                 gPop();
 
-                gPush();
+                gPush(); // Other buttons - Middle
                     {
+                        setColor(vec4(0.94, 0.74, 1.0, 1.0));
+                        gTranslate(0, -0.75, 0)
+                        gScale(0.1, 0.1, 0.1);
+                        drawSphere();
 
+                        gTranslate(5.5, 0, 0)
+                        drawSphere();
+                    }
+                gPop();
+                
+                gPush(); // Other buttons - Bottom
+                    {
+                        setColor(vec4(1.0, 0.0, 0.0, 1.0));
+                        gTranslate(0.075, -1.1, 0)
+                        gScale(0.1, 0.1, 0.1);
+                        drawSphere();
+
+                        gTranslate(3.5, 0, 0)
+                        drawSphere();
                     }
                 gPop();
             }
