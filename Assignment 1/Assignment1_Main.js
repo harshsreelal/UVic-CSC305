@@ -335,13 +335,17 @@ function render(timestamp) {
 }
 
 function drawAstronaut() {
+
+    let floatAmplitude = 1.5;  // Adjust height of floating
+    let floatSpeed = 0.5;      // Adjust speed of floating
+    let floatOffset = floatAmplitude * Math.sin(TIME * floatSpeed);
+
     gPush();
-		gTranslate(cubePosition[0],cubePosition[1],cubePosition[2]);
+		gTranslate(cubePosition[0] + floatOffset, cubePosition[1] + floatOffset, cubePosition[2]);
         // gRotate(astronautRotation, 0, 1, 0);
         // gRotate(-astronautVRotation, 1, 0, 0);
-        // gRotate(20, 0, 1, 0);
 
-        // gRotate(-20, 0, 1, 0);
+        gRotate(-20, 0, 1, 0);
 
 		gPush();
 		{
@@ -363,11 +367,21 @@ function drawAstronaut() {
         gPush();
             {
                 gTranslate(cubePosition[0] - 1.25, cubePosition[1] + 0.5, cubePosition[2] + 0.5);
-                setColor(vec4(0.0, 0.0, 1.0, 1.0));
+                gPush();
+                    {
+                        setColor(vec4(0.0, 0.0, 1.0, 1.0));
 
-                // gRotate(-20, 0, 1, 0);
-                gScale(0.2, 0.2, 0.01);
-                drawSphere();
+                        // gRotate(-20, 0, 1, 0);
+                        gScale(0.2, 0.2, 0.01);
+                        drawSphere();
+                    }
+                gPop();
+
+                gPush();
+                    {
+
+                    }
+                gPop();
             }
         gPop();
 
