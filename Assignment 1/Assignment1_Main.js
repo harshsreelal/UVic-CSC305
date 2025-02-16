@@ -93,7 +93,7 @@ window.onload = function init() {
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 1, 0, 0, 1.0 );
+    gl.clearColor( 0, 0, 0, 1.0 );
     
     gl.enable(gl.DEPTH_TEST);
 
@@ -257,7 +257,7 @@ function render(timestamp) {
 		prevTime = timestamp;
 
         // astronautRotation += 60 * dt; 
-        orbitAngle += 40 * dt; 
+        orbitAngle += 20 * dt; 
 
         TIME += dt
 	}
@@ -323,7 +323,10 @@ function render(timestamp) {
 
     // drawArm();
     // drawLeg();
+    // drawLowerLeg();
     drawAstronaut();
+    // drawStars();
+    // gScale(1.5, 1.5, 1.5)
     // drawJellyfish();
     // drawTentacles();
 
@@ -338,8 +341,8 @@ function drawAstronaut() {
 
     let floatAmplitude = 1.5;  // Adjust height of floating
     let floatSpeed = 0.5;      // Adjust speed of floating
-    // let floatOffset = floatAmplitude * Math.sin(TIME * floatSpeed);
-    let floatOffset = 0;
+    let floatOffset = floatAmplitude * Math.sin(TIME * floatSpeed);
+    // let floatOffset = 0;
 
     gPush();
 		gTranslate(cubePosition[0] + floatOffset, cubePosition[1] + floatOffset, cubePosition[2]);
@@ -479,8 +482,6 @@ function drawArm() {
                 armSwing = 10 * Math.sin(TIME * 1.0);
                 gRotate(armSwing, 0, 0, 1);
 
-                // Rotating along y-axis first then the z-axis to be tilted
-                // gRotate(-20, 0, 1, 0);
                 gRotate(-50, 0, 0, 1);
                 // Scaling to make it long like arm
                 gScale(0.3, 0.1, 0.3);
@@ -501,65 +502,75 @@ function drawLeg(side) {
     gPush();
         gTranslate(cubePosition[0], cubePosition[1], cubePosition[2]);
         // gRotate(90, 0, 1, 0)
+        setColor(vec4(1.0,1.0,1.0,1.0));
         gPush();
             {
                 // Setting the color of arm
-                setColor(vec4(1.0,1.0,1.0,1.0));
+                
                 // setColor(vec4(0.,0.,0.22,1.0));
                 
                 let legSwing = 20 * Math.sin(TIME * 2.0);
-                let cos20 = Math.cos(20 * Math.PI / 180);
-                let sin20 = Math.sin(20 * Math.PI / 180);
-
-                // if (side === "left") {
-                //     gRotate(legSwing, cos20, 0, sin20);
-                // } else {
-                //     gRotate(-legSwing, cos20, 0, sin20);
-                // }
-
                 if (side === "left") {
                     gRotate(legSwing, 1, 0, 0);
                 } else {
                     gRotate(-legSwing, 1, 0, 0);
                 }
 
-                    // gRotate(legSwing, 1, 0, 0);
-                // Rotating along y-axis first then the z-axis to be tilted
-                // gRotate(-20, 0, 1, 0);
-
                 gScale(0.3, 0.1, 0.3);
 
                 drawCube();
 
                 gPush();
-                {gTranslate(cubePosition[0] - 1, cubePosition[1] - 11, cubePosition[2]);
+                    {
+                        gTranslate(0, -11, 0);
 
-                // gRotate(30, 1, 0, 0);
-                // Scaling to make it long like arm
-                gScale(1, 10, 1);
+                        // Scaling to make it long like arm
+                        gScale(1, 10, 1);
 
-                drawCube();}
+                        drawCube();
+                    }
                 gPop();
 
-                gTranslate(cubePosition[0] - 1, cubePosition[1] - 30, cubePosition[2])
-                        
-                // Lower leg rotation
-                // gRotate(20, 0, 1, 0);
-                // gRotate(20, 1, 0, 0);
-                // gRotate(-20, 0, 1, 0);
-                gScale(1, 10, 1);
-
-                        // gScale(1, 1.5, 1);
-
-                drawCube();
-                gTranslate(cubePosition[0] - 1, cubePosition[1] - 1.1, cubePosition[2] + 0.5)
-
-                gScale(1, 0.1, 1.5);
-
-                drawCube();
+                gPush();
+                    {
+                        gTranslate(-2, -25, -2)
+                            
+                        // Lower leg rotation
+                        gScale(2, 7, 2);
+                        drawLowerLeg();
+                    }
+                gPop();
 
             }
         gPop();
+    gPop();
+}
+
+function drawLowerLeg() {
+    gPush();
+        {
+            gTranslate(cubePosition[0], cubePosition[1], cubePosition[2]);
+            // gRotate(90, 0, 1, 0);
+            setColor(vec4(1.0,1.0,1.0,1.0));
+
+            gPush();
+                {   
+                    // armSwing = 10 * Math.sin(TIME * 1.0);
+                    // gRotate(armSwing, 0, 0, 1);  
+
+                    gRotate(50, 1, 0, 0);
+                    gScale(0.5, 1.5, 0.5);
+                    // gRotate(30, 0, 0, 1);
+                    drawCube();
+
+                    gTranslate(cubePosition[0] - 1, cubePosition[1] - 1.1, cubePosition[2] + 0.5)
+
+                    gScale(1, 0.1, 1.5);
+
+                    drawCube();
+                }
+            gPop();
+        }
     gPop();
 }
 
@@ -569,7 +580,7 @@ function drawJellyfish() {
 
         gRotate(orbitAngle, 0, 1, 0);
 
-        gTranslate(8, 0, 0);
+        gTranslate(6, 1, 0);
         gRotate(90, 0, 0, 1);
         gRotate(90, 0, 1, 0);
         gRotate(90, 1, 0, 0);
@@ -626,28 +637,28 @@ function drawTentacles() {
 
                 gPush();
                     {
-                        gTranslate(spherePosition[0] - 2, spherePosition[1], spherePosition[2])
+                        gTranslate(spherePosition[0] - 1.75, spherePosition[1], spherePosition[2])
 
                         drawSphere(); 
                     }
                 gPop();
                 gPush();
                     {
-                        gTranslate(spherePosition[0] - 4, spherePosition[1], spherePosition[2])
+                        gTranslate(spherePosition[0] - 3.75, spherePosition[1], spherePosition[2])
 
                         drawSphere(); 
                     }
                 gPop();
                 gPush();
                     {
-                        gTranslate(spherePosition[0] - 6, spherePosition[1], spherePosition[2])
+                        gTranslate(spherePosition[0] - 5.75, spherePosition[1], spherePosition[2])
 
                         drawSphere(); 
                     }
                 gPop();
                 gPush();
                     {
-                        gTranslate(spherePosition[0] - 8, spherePosition[1], spherePosition[2])
+                        gTranslate(spherePosition[0] - 7.75, spherePosition[1], spherePosition[2])
 
                         drawSphere(); 
                     }
@@ -704,23 +715,48 @@ function drawTentacles() {
 // }
 
 
+const NUM_STARS = 50; // Number of stars
+let stars = [];        // Array to store star positions
 
-
-
-function updateCubePositionDisplay() {
-    document.getElementById("cube-position-display").innerText =
-        `Cube Position: (${cubePosition[0].toFixed(2)}, ${cubePosition[1].toFixed(2)}, ${cubePosition[2].toFixed(2)})`;
+// Initialize stars with random positions
+for (let i = 0; i < NUM_STARS; i++) {
+    stars.push({
+        x: Math.random() * 20 - 10, // Random x position (adjust range as needed)
+        y: Math.random() * 10 - 5,  // Random y position
+        z: Math.random() * -10,     // Random z depth
+        size: 0.01 + Math.random() * (0.05 - 0.01) // Star sizes from 0.05 to 0.01
+    });
 }
 
-var direction = 0.5
-var speed = 0.01
+function drawStars() {
+    gPush();
+    setColor(vec4(1.0, 1.0, 1.0, 1.0)); // White stars
 
-function updateCubePosition() {
+    for (let i = 0; i < NUM_STARS; i++) {
+        let star = stars[i];
 
-    cubePosition[0] += direction * speed;
-    cubePosition[1] += direction * speed;
-    cubePosition[2] += direction * speed;
-    if ((cubePosition[0] > 2.5 || cubePosition[0] < -2.5) || (cubePosition[1] > 1.5 || cubePosition[1] < -1.5) || (cubePosition[2] > 1.5 || cubePosition[2] < -1.5)) {
-        direction *= -1; // Reverse direction
+        // Move the star left over time
+        star.x += 0.01; // Adjust speed as needed
+        star.y += 0.01; // Adjust speed as needed
+
+        // Reset if it moves offscreen
+        if (star.x > 6  || star.y > 6) {  
+            star.x = Math.random() * -25; // Reset to the right side
+            star.y = Math.random() * -10; // Randomize y again
+            star.z = Math.random() * -10;   // Randomize depth
+            star.size = 0.01 + Math.random() * (0.05 - 0.01); // Star sizes from 0.05 to 0.01
+        }
+
+        // Draw the star at its position
+        gPush();
+            {
+                gTranslate(star.x, star.y, star.z);
+                gScale(star.size, star.size, star.size); // Small size for stars
+                drawSphere(); // Draw star
+            }
+        gPop();
     }
+
+    gPop();
 }
+
