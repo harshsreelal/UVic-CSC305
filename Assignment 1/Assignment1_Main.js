@@ -601,80 +601,53 @@ function drawTentacles(time) {
 }
 
 
-const NUM_STARS = 50; // Number of stars
-let stars = [];        // Array to store star positions
+const NUM_STARS = 60; // Number of stars
+let stars = [];       // Array to store star positions
 
-// Initialize stars with random positions
+// Initialize stars with random original positions and sizes
 for (let i = 0; i < NUM_STARS; i++) {
+    var original_x = Math.random() * 20 - 10;
+    var original_y = Math.random() * 10 - 5;
+    var original_z = Math.random() * -10;
+    var size = 0.01 + Math.random() * (0.05 - 0.01);
+
+    // Push values to stars array
     stars.push({
-        x: Math.random() * 20 - 10, // Random x position (adjust range as needed)
-        y: Math.random() * 10 - 5,  // Random y position
-        z: Math.random() * -10,     // Random z depth
-        size: 0.01 + Math.random() * (0.05 - 0.01) // Star sizes from 0.05 to 0.01
+        x: original_x, 
+        y: original_y,  
+        z: original_z,    
+        original_x: original_x,
+        original_y: original_y,
+        size: size 
     });
 }
 
 function drawStars() {
     gPush();
     {
-        setColor(vec4(1.0, 1.0, 1.0, 1.0)); // White stars
+        setColor(vec4(1.0, 1.0, 1.0, 1.0)); 
 
         for (let i = 0; i < NUM_STARS; i++) {
             let star = stars[i];
 
-            // Move the star left over time
-            star.x += 0.01; // Adjust speed as needed
-            star.y += 0.01; // Adjust speed as needed
+            // Moving stars to the top-right
+            star.x += 0.01; 
+            star.y += 0.01; 
 
             // Reset if it moves offscreen
             if (star.x > 6 || star.y > 6) {
-                star.x = Math.random() * -25; // Reset to the right side
-                star.y = Math.random() * -10; // Randomize y again
-                star.z = Math.random() * -10;   // Randomize depth
-                star.size = 0.01 + Math.random() * (0.05 - 0.01); // Star sizes from 0.05 to 0.01
+                star.x = star.original_x - 12; // Reset to x-position offscreen
+                star.y = star.original_y - 12; // Reset to y-position offscreen
             }
 
-            // Draw the star at its position
             gPush();
             {
                 gTranslate(star.x, star.y, star.z);
-                gScale(star.size, star.size, star.size); // Small size for stars
-                drawSphere(); // Draw star
+                gScale(star.size, star.size, star.size); 
+                drawSphere(); 
             }
             gPop();
         }
     }
     gPop();
 }
-// function drawStars() {
-//     gPush();
-//     {
-//         setColor(vec4(1.0, 1.0, 1.0, 1.0)); // White stars
-
-//         for (let i = 0; i < NUM_STARS; i++) {
-//             let star = stars[i];
-
-//             // Move the star left over time
-//             star.x += 0.01; // Adjust speed as needed
-//             star.y += 0.01; // Adjust speed as needed
-
-//             // Reset if it moves offscreen
-//             if (star.x > 6 || star.y > 6) {
-//                 star.x = Math.random() * -25; // Reset to the right side
-//                 star.y = Math.random() * -10; // Randomize y again
-//                 star.z = Math.random() * -10;   // Randomize depth
-//                 star.size = 0.01 + Math.random() * (0.05 - 0.01); // Star sizes from 0.05 to 0.01
-//             }
-
-//             // Draw the star at its position
-//             gPush();
-//             {
-//                 gTranslate(star.x, star.y, star.z);
-//                 gScale(star.size, star.size, star.size); // Small size for stars
-//                 drawSphere(); // Draw star
-//             }
-//             gPop();
-//         }
-//     }
-//     gPop();
-// }
