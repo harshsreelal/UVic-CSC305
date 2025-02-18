@@ -228,16 +228,14 @@ function render(timestamp) {
         dt = (timestamp - prevTime) / 1000.0;
         prevTime = timestamp;
 
-        orbitAngle += 20 * dt;
+        orbitAngle += 10 * dt;
         TIME += dt
     }
 
     drawAstronaut();
     drawStars();
-    // gScale(1.5, 1.5, 1.5)
-    // drawJellyfish();
-    // drawTentacles(performance.now() * 0.001);
-    // drawObject();
+    gScale(1.5, 1.5, 1.5);
+    drawJellyfish();
 
     if (animFlag)
         window.requestAnimFrame(render);
@@ -246,7 +244,7 @@ function render(timestamp) {
 function drawAstronaut() {
 
     var amplitude = 1.5;  // Adjust height of floating
-    var angularFreq = 0.5;      // Adjust speed of floating
+    var angularFreq = 0.25;      // Adjust speed of floating
     var floatOffset = amplitude * Math.sin(TIME * angularFreq);
 
     gPush();
@@ -376,7 +374,7 @@ function drawArm() {
             armSwing = 10 * Math.sin(TIME * 1.0);
             gRotate(armSwing, 0, 0, 1);
             gRotate(-50, 0, 0, 1);
-            
+
             // Cube to act as shoulder pivot when arms rotate 
             gScale(0.3, 0.1, 0.3);
             drawCube();
@@ -461,9 +459,7 @@ function drawJellyfish() {
         gRotate(orbitAngle, 0, 1, 0);
 
         gTranslate(6, 1, 0);
-        // gRotate(90, 0, 0, 1);
         gRotate(90, 0, 1, 0);
-        // gRotate(90, 1, 0, 0);
 
         // gTranslate(spherePosition[0], spherePosition[1], spherePosition[2])
         gPush();
@@ -485,120 +481,45 @@ function drawJellyfish() {
         gPop();
         gPush();
         {
-            gTranslate(spherePosition[0] - 1, spherePosition[1] + 0.5, spherePosition[2])
-
+            gTranslate(spherePosition[0] - 0.25, spherePosition[1] + 0.65, spherePosition[2])
             gScale(0.45, 0.45, 0.45)
+            drawTentacles(5);
 
-            drawTentacles(performance.now() * 0.001);
-            gTranslate(spherePosition[0], spherePosition[1] - 1, spherePosition[2])
-
-            // gScale(0.5, 0.5, 0.5)
-
-            drawTentacles(performance.now() * 0.001);
-            gTranslate(spherePosition[0], spherePosition[1] - 1, spherePosition[2])
-
-            // gScale(0.5, 0.5, 0.5)
-
-            drawTentacles(performance.now() * 0.001);
+            gTranslate(spherePosition[0], spherePosition[1] - 1.4, spherePosition[2])
+            drawTentacles(5);
+            
+            gTranslate(spherePosition[0], spherePosition[1] - 1.4, spherePosition[2])
+            drawTentacles(5);
         }
         gPop();
     }
     gPop();
 }
 
-// function drawTentacles() {
-//     gPush();
-//         gTranslate(spherePosition[0] + 3, spherePosition[1], spherePosition[2])
-//         gPush();
-//             {
-//                 setColor(vec4(0.92,0.61,0.22,1.0));
-//                 gScale(0.75, 0.25, 0.5);
+function drawTentacles(numSegments) {
+    let phaseShift = Math.PI / 6; // Adjusts the delay between segments
 
-// 			    drawSphere();   
-
-//                 gPush();
-//                     {
-//                         gTranslate(spherePosition[0] - 1.75, spherePosition[1], spherePosition[2])
-
-//                         drawSphere(); 
-//                     }
-//                 gPop();
-//                 gPush();
-//                     {
-//                         gTranslate(spherePosition[0] - 3.5, spherePosition[1], spherePosition[2])
-
-//                         drawSphere(); 
-//                     }
-//                 gPop();
-//                 gPush();
-//                     {
-//                         gTranslate(spherePosition[0] - 5.25, spherePosition[1], spherePosition[2])
-
-//                         drawSphere(); 
-//                     }
-//                 gPop();
-//                 gPush();
-//                     {
-//                         gTranslate(spherePosition[0] - 7, spherePosition[1], spherePosition[2])
-
-//                         drawSphere(); 
-//                     }
-//                 gPop();
-//             }
-//         gPop();
-//     gPop();
-// }
-
-function drawTentacles(time) {
     gPush();
     {
-        // gScale(0.5, 0.5, 0.5);
-        setColor(vec4(0.92, 0.61, 0.22, 1.0));
-        gScale(0.75, 0.25, 0.25);
+        gRotate(-90, 0, 0, 1);
+        for (let i = 0; i < numSegments; i++) {
+            let rotationAngle = Math.cos(TIME * 1.0 + i * phaseShift) * 10; // Rotation for segments following wave
 
-        let segmentCount = 6;
-        let segmentLength = 2.0;  // Adjust so spheres are touching
-        let waveAmplitude = 1.0;
-        let waveFrequency = 3.0;
-        let waveOffset = Math.PI / 5; // Phase shift per segment
+            gRotate(rotationAngle, 0, 0, 1);
+            gTranslate(0, -0.75 * 2, 0); // Move to next segment
 
-        let slope = 0.3 * 1.5 * Math.cos(TIME * 1.5);
-        let angle = Math.atan(slope) * (180 / Math.PI);
-
-        let prevX = spherePosition[0];
-        let prevY = spherePosition[1];
-        let prevZ = spherePosition[2];
-
-        for (let i = 0; i < segmentCount; i++) {
             gPush();
             {
-                // Compute sine wave displacement
-                let waveAngle = waveAmplitude * Math.sin(time * waveFrequency + i * waveOffset);
-
-                // Offset direction (tangential movement along the sine curve)
-                let dx = -Math.cos(waveAngle) * segmentLength;
-                let dy = Math.sin(waveAngle) * segmentLength;
-
-                // Compute new position based on previous segment
-                let newX = prevX + dx;
-                let newY = prevY + dy;
-                let newZ = prevZ; // Keep Z constant for now
-
-                // Apply transformation
-                gTranslate(newX, newY, newZ);
+                setColor(vec4(0.92, 0.61, 0.22, 1.0));
+                gScale(0.25, 0.75, 0.25);
                 drawSphere();
-                // gRotate(angle, 0, 0, 1);
-
-                // Update for next segment
-                prevX = newX;
-                prevY = newY;
-                prevZ = newZ;
             }
             gPop();
         }
     }
     gPop();
 }
+
 
 
 const NUM_STARS = 60; // Number of stars
@@ -613,26 +534,26 @@ for (let i = 0; i < NUM_STARS; i++) {
 
     // Push values to stars array
     stars.push({
-        x: original_x, 
-        y: original_y,  
-        z: original_z,    
+        x: original_x,
+        y: original_y,
+        z: original_z,
         original_x: original_x,
         original_y: original_y,
-        size: size 
+        size: size
     });
 }
 
 function drawStars() {
     gPush();
     {
-        setColor(vec4(1.0, 1.0, 1.0, 1.0)); 
+        setColor(vec4(1.0, 1.0, 1.0, 1.0));
 
         for (let i = 0; i < NUM_STARS; i++) {
             let star = stars[i];
 
             // Moving stars to the top-right
-            star.x += 0.01; 
-            star.y += 0.01; 
+            star.x += 0.01;
+            star.y += 0.01;
 
             // Reset if it moves offscreen
             if (star.x > 6 || star.y > 6) {
@@ -643,8 +564,8 @@ function drawStars() {
             gPush();
             {
                 gTranslate(star.x, star.y, star.z);
-                gScale(star.size, star.size, star.size); 
-                drawSphere(); 
+                gScale(star.size, star.size, star.size);
+                drawSphere();
             }
             gPop();
         }
