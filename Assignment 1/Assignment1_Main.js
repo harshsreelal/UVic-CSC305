@@ -503,7 +503,7 @@ function drawTentacles(numSegments) {
     {
         gRotate(-90, 0, 0, 1);
         for (let i = 0; i < numSegments; i++) {
-            let rotationAngle = Math.cos(TIME * 1.0 + i * phaseShift) * 10; // Rotation for segments following wave
+            let rotationAngle = Math.cos(TIME + i * phaseShift) * 10; // Rotation for segments following wave
 
             gRotate(rotationAngle, 0, 0, 1);
             gTranslate(0, -0.75 * 2, 0); // Move to next segment
