@@ -469,13 +469,46 @@ function render(timestamp) {
 	// We've modified the object.js to add in support for this attribute array!
 	gPush();
 	{
-		currentRotation[2] = currentRotation[2] + 30*dt;
+		// currentRotation[2] = currentRotation[2] + 30*dt;
 		gRotate(currentRotation[2],0,0,1);
 		// drawCube();
         // drawCone();
-        drawCylinder();
+        // drawCylinder();
+        drawPenguin();
 	}
 	gPop() ;
 	
     window.requestAnimFrame(render);
+}
+
+function drawPenguin() {
+    gPush(); 
+    {
+        gScale(1, 1, 2);
+        drawSphere();
+
+        gPush();
+        {
+            gTranslate(1.25, 0, 0);
+            gRotate(-60, 0, 1, 0);
+            drawFlipper();
+        }
+        gPop();
+
+        gPush();
+        {
+            gTranslate(-1, 0.5, 2);
+            gRotate(-60, 0, 1, 0);
+            drawFlipper();
+        }
+        gPop();
+    }
+}
+
+function drawFlipper() {
+    gPush();
+    {
+        gScale(0.05, 0.5, 0.75);
+        drawSphere();
+    }
 }
