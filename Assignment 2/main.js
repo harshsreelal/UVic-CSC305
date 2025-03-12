@@ -416,7 +416,7 @@ function render(timestamp) {
     
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-    eye = vec3(0,-10,10);
+    eye = vec3(0,0,10);
     MS = []; // Initialize modeling matrix stack
 	
 	// initialize the modeling matrix to identity
@@ -469,8 +469,8 @@ function render(timestamp) {
 	// We've modified the object.js to add in support for this attribute array!
 	gPush();
 	{
-		// currentRotation[2] = currentRotation[2] + 30*dt;
-		gRotate(currentRotation[2],0,0,1);
+		currentRotation[2] = currentRotation[2] + 30*dt;
+		gRotate(currentRotation[2],0,1,0);
 		// drawCube();
         // drawCone();
         // drawCylinder();
@@ -482,33 +482,72 @@ function render(timestamp) {
 }
 
 function drawPenguin() {
-    gPush(); 
-    {
-        gScale(1, 1, 2);
-        drawSphere();
-
-        gPush();
-        {
-            gTranslate(1.25, 0, 0);
-            gRotate(-60, 0, 1, 0);
-            drawFlipper();
-        }
-        gPop();
-
-        gPush();
-        {
-            gTranslate(-1, 0.5, 2);
-            gRotate(-60, 0, 1, 0);
-            drawFlipper();
-        }
-        gPop();
-    }
-}
-
-function drawFlipper() {
     gPush();
     {
-        gScale(0.05, 0.5, 0.75);
+        setColor(vec4(0.0,0.0,0.0,1.0));
+        // gRotate(90, 0, 1, 0);
+        gPush();
+        {
+            gScale(2, 3.5, 2);
+            drawSphere();
+        }
+        gPop();
+
+        gPush();
+        {
+            gTranslate(-2.5, -0.5, 0);
+            gRotate(-20, 0, 0, 1);
+            drawWings();
+        }
+        gPop();
+        
+        gPush();
+        {
+            gTranslate(2.5, -0.5, 0);
+            gRotate(20, 0, 0, 1);
+            drawWings();
+        }
+        gPop();
+
+        gPush();
+        {
+            gPush();
+            {
+                gTranslate(-0.5, -3.5, 1);
+                drawFeet();
+            }
+            gPop();
+            gTranslate(0.5, -3.5, 1);
+            drawFeet();
+        }
+        gPop();
+
+        gPush();
+        {
+            gTranslate(0, 1.5, 1.9);
+            gScale(0.5, 0.5, 0.5);
+            drawCone();
+        }
+        gPop();
+    }
+    gPop();
+}
+
+function drawWings() {
+    gPush();
+    {
+        gScale(0.25, 1.5, 1)
         drawSphere();
     }
+    gPop();
+}
+
+function drawFeet() {
+    gPush();
+    {
+        setColor(vec4(1.0, 1.0, 0.0, 1.0));
+        gScale(0.75, 0.25, 1.5);
+        drawSphere();
+    }
+    gPop();
 }
