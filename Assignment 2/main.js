@@ -267,7 +267,10 @@ function loadImageTexture(tex, image) {
 // This just calls the appropriate texture loads for this example adn puts the textures in an array
 function initTexturesForExample() {
     textureArray.push({}) ;
-    loadFileTexture(textureArray[textureArray.length-1],"box.png") ;
+    loadFileTexture(textureArray[textureArray.length-1],"ice.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"snow.png") ;
     
     textureArray.push({}) ;
     loadImageTexture(textureArray[textureArray.length-1],imageCheckerboard) ;
@@ -287,7 +290,7 @@ window.onload = function init() {
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 0.5, 0.5, 1.0, 1.0 );
+    gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
     
     gl.enable(gl.DEPTH_TEST);
 
@@ -469,16 +472,32 @@ function render(timestamp) {
 	// We've modified the object.js to add in support for this attribute array!
 	gPush();
 	{
-		currentRotation[2] = currentRotation[2] + 30*dt;
+		// currentRotation[2] = currentRotation[2] + 30*dt;
 		gRotate(currentRotation[2],0,1,0);
 		// drawCube();
         // drawCone();
         // drawCylinder();
-        drawPenguin();
+        gPush();
+        {
+            gTranslate(0, 3.5, 0);
+            gRotate(-90, 0, 1, 0);
+            gRotate(90, 1, 0, 0);
+            gScale(0.25, 0.25, 0.25);
+            drawPenguin();
+        }
+        gPop();
+        
+        drawSnowTerrain();
 	}
 	gPop() ;
 	
     window.requestAnimFrame(render);
+}
+
+function drawSnowTerrain() {
+    gTranslate(0, 0, 0);
+    gScale(3, 3, 3);
+    drawSphere();
 }
 
 function drawPenguin() {
