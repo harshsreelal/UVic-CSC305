@@ -273,13 +273,19 @@ function initTexturesForExample() {
     loadFileTexture(textureArray[textureArray.length-1],"ice.png") ;
     
     textureArray.push({}) ;
-    loadFileTexture(textureArray[textureArray.length-1],"penguin_beak.png") ;
-    
-    textureArray.push({}) ;
     loadFileTexture(textureArray[textureArray.length-1],"tree_top.png") ;
     
     textureArray.push({}) ;
     loadFileTexture(textureArray[textureArray.length-1],"tree_bark.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"star.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"darkWood.jpg") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"glass.png") ;
     
     textureArray.push({}) ;
     loadImageTexture(textureArray[textureArray.length-1],imageCheckerboard) ;
@@ -492,22 +498,25 @@ function render(timestamp) {
         // drawCone();
         // drawCylinder();
 
-        gPush();
-        {
-            currentRotation[2] = currentRotation[2] + 50*dt;
-		    gRotate(currentRotation[2],0,0,1);
-            gTranslate(0, 3.5, 0);
-            gRotate(-90, 0, 1, 0);
-            gRotate(90, 1, 0, 0);
-            gScale(0.25, 0.25, 0.25);
-            drawPenguin();
-        }
-        gPop();
+        // gPush();
+        // {
+        //     currentRotation[2] = currentRotation[2] + 50*dt;
+		//     gRotate(currentRotation[2],0,0,1);
+        //     gTranslate(0, 3.5, 0);
+        //     gRotate(-90, 0, 1, 0);
+        //     gRotate(90, 1, 0, 0);
+        //     gScale(0.25, 0.25, 0.25);
+        //     drawPenguin();
+        // }
+        // gPop();
         // gRotate(90, 0, 1, 0);
-        drawSnowTerrain();
+        // drawSnowTerrain();
         // drawSnowman();
         // drawPenguin();
         // drawTree();
+        // drawStars();
+
+        drawSnowglobe();
 	}
 	gPop() ;
 	
@@ -534,12 +543,27 @@ function drawSnowTerrain() {
     }
     gPop();
 
-    gPush();
+    gPush(); // Section to improve
     {
-        gTranslate(-1, 2, 4);
-        gRotate(80, 1, 0, 0);
-        gScale(0.5, 0.5, 0.5);
-        drawTree();
+        gPush();
+        {
+            gTranslate(-1, 2, 3.5);
+            gRotate(60, 1, 0, 0);
+            gRotate(10, 0, 0, 1);
+            gScale(0.5, 0.5, 0.5);
+            drawTree();
+        }
+        gPop();
+        
+        gPush();
+        {
+            gTranslate(2, 0, 4);
+            gRotate(90, 1, 0, 0);
+            gRotate(-30, 0, 0, 1);
+            gScale(0.5, 0.5, 0.5);
+            drawTree();
+        }
+        gPop();
     }
     gPop();
 }
@@ -671,6 +695,100 @@ function drawTree() {
         gScale(1, 1, 1);
         gRotate(-90, 1, 0, 0);
         drawCylinder();
+    }
+    gPop();
+}
+
+const NUM_STARS = 400; // Number of stars
+const STAR_RADIUS = 5.0; // Distance from the camera
+let stars = []; // Array to store star positions
+
+// Initialize stars randomly on a sphere
+for (let i = 0; i < NUM_STARS; i++) {
+    let theta = Math.random() * Math.PI;      // Random latitude (0 to π)
+    let phi = Math.random() * Math.PI * 2;    // Random longitude (0 to 2π)
+
+    let x = STAR_RADIUS * Math.sin(theta) * Math.cos(phi);
+    let y = STAR_RADIUS * Math.sin(theta) * Math.sin(phi);
+    let z = STAR_RADIUS * Math.cos(theta);
+
+    let size = 0.02 + Math.random() * (0.05 - 0.01);
+
+    stars.push({
+        x: x, y: y, z: z, 
+        original_x: x, original_y: y, original_z: z, 
+        size: size,
+        velocity: Math.random() * 0.02 + 0.005 // Small outward movement speed
+    });
+}
+
+// Function to draw stars
+function drawStars() {
+    gPush();
+    {
+        setColor(vec4(1.0, 1.0, 1.0, 1.0)); // White stars
+
+        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[5].textureWebGL); // Snow texture
+        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 5);
+
+        for (let i = 0; i < NUM_STARS; i++) {
+            let star = stars[i];
+
+            // Move stars outward slightly
+            // star.x += star.velocity * (star.x / STAR_RADIUS);
+            // star.y += star.velocity * (star.y / STAR_RADIUS);
+            // star.z += star.velocity * (star.z / STAR_RADIUS);
+
+            // Reset star if it moves too far
+            // let distance = Math.sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
+            // if (distance > STAR_RADIUS * 1.5) {
+            //     let theta = Math.random() * Math.PI;
+            //     let phi = Math.random() * Math.PI * 2;
+
+            //     star.x = STAR_RADIUS * Math.sin(theta) * Math.cos(phi);
+            //     star.y = STAR_RADIUS * Math.sin(theta) * Math.sin(phi);
+            //     star.z = STAR_RADIUS * Math.cos(theta);
+            // }
+
+            gPush();
+            {
+                gTranslate(star.x, star.y, star.z);
+                gScale(star.size, star.size, star.size);
+                drawSphere();
+            }
+            gPop();
+        }
+    }
+    gPop();
+}
+
+function drawSnowglobe() {
+    gPush();
+    {
+        gPush();
+        {
+            gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[5].textureWebGL); // Snow texture
+            gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 5);
+            
+            gTranslate(0, -3, 0);
+            gScale(2.5, 0.75, 2.5);
+            drawCube();
+        }
+        gPop();
+        
+        gPush();
+        {
+            gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[6].textureWebGL); // Snow texture
+            gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 6);
+            
+            gTranslate(0, 1, 0);
+            gScale(3, 3, 3)
+            drawSphere();
+        }
+        gPop();
     }
     gPop();
 }
