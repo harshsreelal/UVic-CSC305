@@ -267,10 +267,19 @@ function loadImageTexture(tex, image) {
 // This just calls the appropriate texture loads for this example adn puts the textures in an array
 function initTexturesForExample() {
     textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"snow.png") ;
+    
+    textureArray.push({}) ;
     loadFileTexture(textureArray[textureArray.length-1],"ice.png") ;
     
     textureArray.push({}) ;
-    loadFileTexture(textureArray[textureArray.length-1],"snow.png") ;
+    loadFileTexture(textureArray[textureArray.length-1],"penguin_beak.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"tree_top.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"tree_bark.png") ;
     
     textureArray.push({}) ;
     loadImageTexture(textureArray[textureArray.length-1],imageCheckerboard) ;
@@ -333,7 +342,7 @@ window.onload = function init() {
     };
 
 	// Helper function just for this example to load the set of textures
-    initTexturesForExample() ;
+    initTexturesForExample();
 
     waitForTextures(textureArray);
 }
@@ -418,8 +427,14 @@ function gPush() {
 function render(timestamp) {
     
     gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    dt = (timestamp - prevTime) / 1000.0;
+	prevTime = timestamp;
+
+    var camX = 10 * Math.cos(0.5 * timestamp * 0.001);
+    var camZ = 10 * Math.sin(0.5 * timestamp * 0.001);
     
-    eye = vec3(0,0,10);
+    eye = vec3(camX,5,camZ);
     MS = []; // Initialize modeling matrix stack
 	
 	// initialize the modeling matrix to identity
@@ -443,29 +458,28 @@ function render(timestamp) {
 	// x_new = x + v*dt
 	// That is the new position equals the current position + the rate of of change of that position (often a velocity or speed), times the change in time
 	// We can do this with angles or positions, the whole x,y,z position or just one dimension. It is up to us!
-	dt = (timestamp - prevTime) / 1000.0;
-	prevTime = timestamp;
+	
 	
 	// We need to bind our textures, ensure the right one is active before we draw
 	//Activate a specified "texture unit".
     //Texture units are of form gl.TEXTUREi | where i is an integer.
-	gl.activeTexture(gl.TEXTURE0);
-	if (useTextures % 2 == 1) 
-	{
-		//Binds a texture to a target. Target is then used in future calls.
-		//Targets:
-			// TEXTURE_2D           - A two-dimensional texture.
-			// TEXTURE_CUBE_MAP     - A cube-mapped texture.
-			// TEXTURE_3D           - A three-dimensional texture.
-			// TEXTURE_2D_ARRAY     - A two-dimensional array texture.
-		gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL);
-		gl.uniform1i(gl.getUniformLocation(program, "texture1"), 0);
-	}
-    else
-	{
-		gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL);
-		gl.uniform1i(gl.getUniformLocation(program, "texture2"), 0);
-	}
+	// gl.activeTexture(gl.TEXTURE0);
+	// if (useTextures % 2 == 1) 
+	// {
+	// 	//Binds a texture to a target. Target is then used in future calls.
+	// 	//Targets:
+	// 		// TEXTURE_2D           - A two-dimensional texture.
+	// 		// TEXTURE_CUBE_MAP     - A cube-mapped texture.
+	// 		// TEXTURE_3D           - A three-dimensional texture.
+	// 		// TEXTURE_2D_ARRAY     - A two-dimensional array texture.
+	// 	gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL);
+	// 	gl.uniform1i(gl.getUniformLocation(program, "texture1"), 0);
+	// }
+    // else
+	// {
+	// 	gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL);
+	// 	gl.uniform1i(gl.getUniformLocation(program, "texture2"), 0);
+	// }
 	
 	// Now let's draw a shape animated!
 	// You may be wondering where the texture coordinates are!
@@ -473,12 +487,15 @@ function render(timestamp) {
 	gPush();
 	{
 		// currentRotation[2] = currentRotation[2] + 30*dt;
-		gRotate(currentRotation[2],0,1,0);
+		// gRotate(currentRotation[2],0,1,0);
 		// drawCube();
         // drawCone();
         // drawCylinder();
+
         gPush();
         {
+            currentRotation[2] = currentRotation[2] + 50*dt;
+		    gRotate(currentRotation[2],0,0,1);
             gTranslate(0, 3.5, 0);
             gRotate(-90, 0, 1, 0);
             gRotate(90, 1, 0, 0);
@@ -486,8 +503,11 @@ function render(timestamp) {
             drawPenguin();
         }
         gPop();
-        
+        // gRotate(90, 0, 1, 0);
         drawSnowTerrain();
+        // drawSnowman();
+        // drawPenguin();
+        // drawTree();
 	}
 	gPop() ;
 	
@@ -495,12 +515,40 @@ function render(timestamp) {
 }
 
 function drawSnowTerrain() {
-    gTranslate(0, 0, 0);
-    gScale(3, 3, 3);
-    drawSphere();
+    gPush();
+    {
+
+        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL); // Snow texture
+        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 0);
+
+        gTranslate(0, 0, 0);
+        gScale(3, 3, 3);
+        drawSphere();
+
+        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL); // Snow texture
+        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 1);
+        gScale(1.025, 1.025, 0.75);
+        drawSphere();
+    }
+    gPop();
+
+    gPush();
+    {
+        gTranslate(-1, 2, 4);
+        gRotate(80, 1, 0, 0);
+        gScale(0.5, 0.5, 0.5);
+        drawTree();
+    }
+    gPop();
 }
 
 function drawPenguin() {
+    gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+    gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL); // Snow texture
+    gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 1);
+
     gPush();
     {
         setColor(vec4(0.0,0.0,0.0,1.0));
@@ -543,6 +591,10 @@ function drawPenguin() {
 
         gPush();
         {
+            gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[2].textureWebGL); // Snow texture
+            gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 2);
+
             gTranslate(0, 1.5, 1.9);
             gScale(0.5, 0.5, 0.5);
             drawCone();
@@ -567,6 +619,58 @@ function drawFeet() {
         setColor(vec4(1.0, 1.0, 0.0, 1.0));
         gScale(0.75, 0.25, 1.5);
         drawSphere();
+    }
+    gPop();
+}
+
+function drawSnowman() {
+    gPush();
+    {
+        gPush();
+        {
+            setColor(vec4(1.0, 1.0, 1.0, 1.0));
+            gTranslate(0, -1, 0);
+            drawSphere();
+            gTranslate(0, 1.5, 0);
+            gScale(0.75, 0.75, 0.75);
+            drawSphere();
+        }
+        gPop();
+
+        gPush();
+        {
+
+        }
+        gPop();
+    }
+    gPop();
+}
+
+function drawTree() {
+    gPush();
+    {
+        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[3].textureWebGL); // Snow texture
+        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 3);
+
+        // setColor(vec4(1.0, 1.0, 1.0, 1.0));
+        gTranslate(0, 0, 0);
+        gScale(1, 4, 1);
+        gRotate(-90, 1, 0, 0);
+        drawCone();
+    }
+    gPop();
+    gPush();
+    {
+        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[4].textureWebGL); // Snow texture
+        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 4);
+
+        // setColor(vec4(1.0, 1.0, 1.0, 1.0));
+        gTranslate(0, -2.5, 0);
+        gScale(1, 1, 1);
+        gRotate(-90, 1, 0, 0);
+        drawCylinder();
     }
     gPop();
 }
