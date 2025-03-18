@@ -15,16 +15,17 @@ var bottom = -6.0;
 
 
 var lightPosition2 = vec4(100.0, 100.0, 100.0, 1.0 );
-var lightPosition = vec4(0.0, 0.0, 100.0, 1.0 );
+var lightPosition = vec4(-1.0, 5.0, 1.0, 1.0 );
+// var lightPosition = vec4(0.0, 0.0, .0, 1.0 );
 
 var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0 );
 var lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
 var lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
 
 var materialAmbient = vec4( 1.0, 0.0, 1.0, 1.0 );
-var materialDiffuse = vec4( 1.0, 0.8, 0.0, 1.0 );
+var materialDiffuse = vec4( 0.8, 0.8, 0.8, 1.0 );
 var materialSpecular = vec4( 0.4, 0.4, 0.4, 1.0 );
-var materialShininess = 30.0;
+var materialShininess = 10.0;
 
 var ambientColor, diffuseColor, specularColor;
 
@@ -43,6 +44,12 @@ var TIME = 0.0; // Realtime
 var dt = 0.0
 var prevTime = 0.0;
 var resetTimerFlag = true;
+
+var shakeActive = false; // Is the globe currently shaking?
+var shakeStartTime = 0;  // When did the shaking start?
+var shakeInterval = 5000; // Shake every 5000ms (5 seconds)
+var lastShakeTime = 0;   // Last time the shake started
+
 
 
 
@@ -279,16 +286,28 @@ function initTexturesForExample() {
     loadFileTexture(textureArray[textureArray.length-1],"tree_bark.png") ;
     
     textureArray.push({}) ;
-    loadFileTexture(textureArray[textureArray.length-1],"star.png") ;
+    loadFileTexture(textureArray[textureArray.length-1],"white.png") ;
     
     textureArray.push({}) ;
-    loadFileTexture(textureArray[textureArray.length-1],"darkWood.jpg") ;
+    loadFileTexture(textureArray[textureArray.length-1],"gold.png") ;
     
     textureArray.push({}) ;
     loadFileTexture(textureArray[textureArray.length-1],"glass.png") ;
     
     textureArray.push({}) ;
-    loadImageTexture(textureArray[textureArray.length-1],imageCheckerboard) ;
+    loadFileTexture(textureArray[textureArray.length-1],"penguin_body.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"yellow.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"penguin_head.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"black.png") ;
+    
+    textureArray.push({}) ;
+    loadFileTexture(textureArray[textureArray.length-1],"winter_bg.png") ;
 }
 
 // Changes which texture is active in the array of texture examples (see initTexturesForExample)
@@ -305,9 +324,13 @@ window.onload = function init() {
     if ( !gl ) { alert( "WebGL isn't available" ); }
 
     gl.viewport( 0, 0, canvas.width, canvas.height );
-    gl.clearColor( 0.0, 0.0, 0.0, 1.0 );
+    gl.clearColor(0.1, 0.1, 0.1, 1.0);  // Dark gray background
+    // gl.clearColor(1, 0, 1, 1.0);  // Dark gray background
+
     
     gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     //
     //  Load shaders and initialize attribute buffers
@@ -437,8 +460,10 @@ function render(timestamp) {
     dt = (timestamp - prevTime) / 1000.0;
 	prevTime = timestamp;
 
-    var camX = 10 * Math.cos(0.5 * timestamp * 0.001);
-    var camZ = 10 * Math.sin(0.5 * timestamp * 0.001);
+    TIME += dt;
+
+    var camX = 10 * Math.cos(0.5 * timestamp * 0.0005);
+    var camZ = 10 * Math.sin(0.5 * timestamp * 0.0005);
     
     eye = vec3(camX,5,camZ);
     MS = []; // Initialize modeling matrix stack
@@ -490,60 +515,100 @@ function render(timestamp) {
 	// Now let's draw a shape animated!
 	// You may be wondering where the texture coordinates are!
 	// We've modified the object.js to add in support for this attribute array!
-	gPush();
-	{
-		// currentRotation[2] = currentRotation[2] + 30*dt;
-		// gRotate(currentRotation[2],0,1,0);
-		// drawCube();
-        // drawCone();
-        // drawCylinder();
 
-        // gPush();
-        // {
-        //     currentRotation[2] = currentRotation[2] + 50*dt;
-		//     gRotate(currentRotation[2],0,0,1);
-        //     gTranslate(0, 3.5, 0);
-        //     gRotate(-90, 0, 1, 0);
-        //     gRotate(90, 1, 0, 0);
-        //     gScale(0.25, 0.25, 0.25);
-        //     drawPenguin();
-        // }
-        // gPop();
-        // gRotate(90, 0, 1, 0);
-        // drawSnowTerrain();
-        // drawSnowman();
-        // drawPenguin();
-        // drawTree();
-        // drawStars();
+    gPush();
+    {
+        gRotate(90, 1, 0, 0);
+        gTranslate(0, 0, 0);
+        gScale(30, 30, 30);
+        gl.activeTexture(gl.TEXTURE0); 
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[11].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+        drawCylinder();
+    }
+    gPop();
 
-        drawSnowglobe();
-	}
-	gPop() ;
+
+    gTranslate(0, -1, 0);
+    gPush();
+    {
+        gScale(0.75, 0.75, 0.75);
+
+        let cycleDuration = 10.0; // Total animation cycle duration 
+        let moveUpTime = 1.0;  // Time to go up
+        let shakeTime = 3.0;   // Time to shake
+        let moveDownTime = 1.0; // Time to go down
+        let amplitude = 30;    // Max shaking angle
+
+        let time = (performance.now() / 1000) % cycleDuration; 
+        let moveY = 0;
+        let oscillationAngle = 0;
+
+        if (time < moveUpTime) {
+            moveY = (time / moveUpTime) * 2.0;
+        } else if (time < moveUpTime + shakeTime) {
+            moveY = 2.0;
+
+            let shakeTimeElapsed = time - moveUpTime; // Time since shake started
+            let frequency = 6 / shakeTime; // 6 oscillations in 3 seconds
+            oscillationAngle = amplitude * Math.sin(2 * Math.PI * frequency * shakeTimeElapsed);
+        } else if (time < moveUpTime + shakeTime + moveDownTime) {
+            let t = (time - (moveUpTime + shakeTime)) / moveDownTime;
+            moveY = 2.0 * (1 - t);
+        }
+
+        gTranslate(0, moveY, 0);
+        gRotate(oscillationAngle, 1, 0, 0);
+
+        drawScene();
+        }
+        gPop();
+
+        gTranslate(0, -4, 0);
+
+        gPush();
+        {
+            gScale(5, 1, 5);
+
+            gl.activeTexture(gl.TEXTURE0); 
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+            
+            drawCube();
+        }
+        gPop();
+    
 	
     window.requestAnimFrame(render);
 }
 
+
 function drawSnowTerrain() {
     gPush();
     {
-
-        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-        gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL); // Snow texture
-        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 0);
+        gl.activeTexture(gl.TEXTURE0); 
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
 
         gTranslate(0, 0, 0);
         gScale(3, 3, 3);
         drawSphere();
 
-        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-        gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL); // Snow texture
-        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 1);
+        // Icy path for penguin to slide
+        gl.activeTexture(gl.TEXTURE0);  
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+
         gScale(1.025, 1.025, 0.75);
         drawSphere();
     }
     gPop();
 
-    gPush(); // Section to improve
+    gPush(); // Additions to snow sphere (Snowmen and Trees)
     {
         gPush();
         {
@@ -564,63 +629,133 @@ function drawSnowTerrain() {
             drawTree();
         }
         gPop();
-    }
-    gPop();
-}
-
-function drawPenguin() {
-    gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-    gl.bindTexture(gl.TEXTURE_2D, textureArray[1].textureWebGL); // Snow texture
-    gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 1);
-
-    gPush();
-    {
-        setColor(vec4(0.0,0.0,0.0,1.0));
-        // gRotate(90, 0, 1, 0);
+        
         gPush();
         {
-            gScale(2, 3.5, 2);
-            drawSphere();
-        }
-        gPop();
-
-        gPush();
-        {
-            gTranslate(-2.5, -0.5, 0);
-            gRotate(-20, 0, 0, 1);
-            drawWings();
+            gTranslate(-1, -1, 3.5);
+            gRotate(90, 1, 0, 0);
+            gRotate(10, 0, 0, 1);
+            gRotate(120, 0, 1, 0);
+            gScale(0.5, 0.5, 0.5);
+            drawSnowman();
         }
         gPop();
         
         gPush();
         {
-            gTranslate(2.5, -0.5, 0);
-            gRotate(20, 0, 0, 1);
-            drawWings();
+            gTranslate(-1, 2, -3.5);
+            gRotate(-60, 1, 0, 0);
+            gRotate(10, 0, 0, 1);
+            gScale(0.5, 0.5, 0.5);
+            drawTree();
+        }
+        gPop();
+        
+        gPush();
+        {
+            gTranslate(2, 0, -4);
+            gRotate(-90, 1, 0, 0);
+            gRotate(-30, 0, 0, 1);
+            gScale(0.5, 0.5, 0.5);
+            drawTree();
+        }
+        gPop();
+        
+        gPush();
+        {
+            gTranslate(-1, -1, -3.5);
+            gRotate(-90, 1, 0, 0);
+            gRotate(10, 0, 0, 1);
+            gRotate(-120, 0, 1, 0);
+            gScale(0.5, 0.5, 0.5);
+            drawSnowman();
+        }
+        gPop();
+    }
+    gPop();
+}
+
+function drawPenguin() {
+    gl.activeTexture(gl.TEXTURE0);  
+    gl.bindTexture(gl.TEXTURE_2D, textureArray[7].textureWebGL); 
+    gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+    gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+
+    gPush();
+    {
+        gPush(); // Body
+        {
+            gScale(4, 4, 4);
+            gRotate(90, 1, 0, 0);
+            drawCylinder();
         }
         gPop();
 
+        gPush(); // Head
+        {
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[9].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+
+            gTranslate(0, 2, 0);
+            gScale(2, 1.5, 2);
+            drawSphere();
+        }
+        gPop();
+        gPush(); // Head
+        {
+            gTranslate(0, -2, 0);
+            gScale(2, 1, 2);
+            drawSphere();
+        }
+        gPop();
+
+        gPush(); // Wings
+        {
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[10].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+            gTranslate(-2.1, 0.5, 0);
+            gRotate(-20, 0, 0, 1);
+            drawWings("left");
+        }
+        gPop();
+        
         gPush();
+        {
+            gTranslate(2.1, 0.5, 0);
+            gRotate(20, 0, 0, 1);
+            drawWings("right");
+        }
+        gPop();
+
+        gPush(); // Feet
         {
             gPush();
             {
-                gTranslate(-0.5, -3.5, 1);
+                gTranslate(-0.5, -3.5, 0);
+                gRotate(40, 1, 0, 0);
+                drawFeet();
+                gTranslate(1, 0, 0)
                 drawFeet();
             }
             gPop();
-            gTranslate(0.5, -3.5, 1);
-            drawFeet();
+            
         }
         gPop();
 
-        gPush();
+        gPush(); // Beak
         {
-            gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-            gl.bindTexture(gl.TEXTURE_2D, textureArray[2].textureWebGL); // Snow texture
-            gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 2);
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[8].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
 
-            gTranslate(0, 1.5, 1.9);
-            gScale(0.5, 0.5, 0.5);
+            gTranslate(0, 3.5, 1.9);
+            gRotate(-40, 1, 0, 0);
+            gScale(0.25, 0.25, 1.5);
             drawCone();
         }
         gPop();
@@ -628,10 +763,30 @@ function drawPenguin() {
     gPop();
 }
 
-function drawWings() {
+function drawWings(side) {
+    
     gPush();
     {
-        gScale(0.25, 1.5, 1)
+        let flapSpeed = 10.0;  
+        let maxAngle = 0;
+
+        if (side == "left") {
+            maxAngle = -20;
+        } else {
+            maxAngle = 20;
+        }
+
+        let armSwing = maxAngle * Math.max(0, Math.sin(TIME * flapSpeed));
+
+        gRotate(armSwing, 0, 0, 1);
+
+        // Shoulder Pivot
+        gScale(0.05, 0.1, 1)
+        drawSphere();
+
+        // Actual Wing
+        gTranslate(0, -11, 0);
+        gScale(5, 15, 1)
         drawSphere();
     }
     gPop();
@@ -640,8 +795,12 @@ function drawWings() {
 function drawFeet() {
     gPush();
     {
-        setColor(vec4(1.0, 1.0, 0.0, 1.0));
-        gScale(0.75, 0.25, 1.5);
+        gl.activeTexture(gl.TEXTURE0);  
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[8].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+
+        gScale(0.75, 0.25, 1);
         drawSphere();
     }
     gPop();
@@ -650,9 +809,13 @@ function drawFeet() {
 function drawSnowman() {
     gPush();
     {
-        gPush();
+        gPush(); // Main Body
         {
-            setColor(vec4(1.0, 1.0, 1.0, 1.0));
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[0].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+
             gTranslate(0, -1, 0);
             drawSphere();
             gTranslate(0, 1.5, 0);
@@ -663,7 +826,32 @@ function drawSnowman() {
 
         gPush();
         {
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[10].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
 
+            gPush(); // Eyes
+            {
+                gTranslate(-0.25, 0.5, 0.75);
+                gScale(0.05, 0.15, 0.05);
+                drawSphere();
+                gTranslate(10, 0, 0);
+                drawSphere();
+            }
+            gPop();
+
+            gPush(); // Buttons
+            {
+                gTranslate(0, -1, 1);
+                gScale(0.1, 0.1, 0.1);
+                drawSphere();
+                gTranslate(0, 5, -1);
+                drawSphere();
+                gTranslate(0, -10, -0.5);
+                drawSphere();
+            }
+            gPop();
         }
         gPop();
     }
@@ -671,26 +859,26 @@ function drawSnowman() {
 }
 
 function drawTree() {
-    gPush();
+    gPush(); // Leaves
     {
-        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-        gl.bindTexture(gl.TEXTURE_2D, textureArray[3].textureWebGL); // Snow texture
-        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 3);
-
-        // setColor(vec4(1.0, 1.0, 1.0, 1.0));
+        gl.activeTexture(gl.TEXTURE0);  
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[2].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
+ 
         gTranslate(0, 0, 0);
         gScale(1, 4, 1);
         gRotate(-90, 1, 0, 0);
         drawCone();
     }
     gPop();
-    gPush();
+    gPush(); // Trunk
     {
-        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-        gl.bindTexture(gl.TEXTURE_2D, textureArray[4].textureWebGL); // Snow texture
-        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 4);
+        gl.activeTexture(gl.TEXTURE0); 
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[3].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
 
-        // setColor(vec4(1.0, 1.0, 1.0, 1.0));
         gTranslate(0, -2.5, 0);
         gScale(1, 1, 1);
         gRotate(-90, 1, 0, 0);
@@ -699,57 +887,56 @@ function drawTree() {
     gPop();
 }
 
-const NUM_STARS = 400; // Number of stars
-const STAR_RADIUS = 5.0; // Distance from the camera
-let stars = []; // Array to store star positions
+const NUM_SNOW = 400; // Number of snow particles
+const SNOW_RADIUS = 5.75; // Distance from the sphere
+let snow = []; // Array to store snow positions
 
-// Initialize stars randomly on a sphere
-for (let i = 0; i < NUM_STARS; i++) {
+// Initialize snow randomly above sphere
+for (let i = 0; i < NUM_SNOW; i++) {
     let theta = Math.random() * Math.PI;      // Random latitude (0 to π)
     let phi = Math.random() * Math.PI * 2;    // Random longitude (0 to 2π)
 
-    let x = STAR_RADIUS * Math.sin(theta) * Math.cos(phi);
-    let y = STAR_RADIUS * Math.sin(theta) * Math.sin(phi);
-    let z = STAR_RADIUS * Math.cos(theta);
+    let x = SNOW_RADIUS * Math.sin(theta) * Math.cos(phi);
+    let y = SNOW_RADIUS * Math.sin(theta) * Math.sin(phi);
+    let z = SNOW_RADIUS * Math.cos(theta);
 
-    let size = 0.02 + Math.random() * (0.05 - 0.01);
+    let size = 0.04 + Math.random() * (0.05 - 0.01); // Decide on size of snow
 
-    stars.push({
+    snow.push({
         x: x, y: y, z: z, 
         original_x: x, original_y: y, original_z: z, 
         size: size,
-        velocity: Math.random() * 0.02 + 0.005 // Small outward movement speed
+        velocity: Math.random() * 0.01 + 0.005 // Small outward movement speed
     });
 }
 
-// Function to draw stars
-function drawStars() {
+function drawSnow() {
     gPush();
     {
-        setColor(vec4(1.0, 1.0, 1.0, 1.0)); // White stars
 
-        gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-        gl.bindTexture(gl.TEXTURE_2D, textureArray[5].textureWebGL); // Snow texture
-        gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 5);
+        gl.activeTexture(gl.TEXTURE0);  
+        gl.bindTexture(gl.TEXTURE_2D, textureArray[4].textureWebGL); 
+        gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+        gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
 
-        for (let i = 0; i < NUM_STARS; i++) {
-            let star = stars[i];
+        for (let i = 0; i < NUM_SNOW; i++) {
+            let star = snow[i];
 
-            // Move stars outward slightly
-            // star.x += star.velocity * (star.x / STAR_RADIUS);
-            // star.y += star.velocity * (star.y / STAR_RADIUS);
-            // star.z += star.velocity * (star.z / STAR_RADIUS);
+            // Move snow inward (to depict snowfall)
+            star.x -= star.velocity * (star.x / SNOW_RADIUS);
+            star.y -= star.velocity * (star.y / SNOW_RADIUS);
+            star.z -= star.velocity * (star.z / SNOW_RADIUS);
 
-            // Reset star if it moves too far
-            // let distance = Math.sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
-            // if (distance > STAR_RADIUS * 1.5) {
-            //     let theta = Math.random() * Math.PI;
-            //     let phi = Math.random() * Math.PI * 2;
+            // Reset snow "touches" the ground
+            let distance = Math.sqrt(star.x * star.x + star.y * star.y + star.z * star.z);
+            if (distance < 3.5) {
+                let theta = Math.random() * Math.PI;
+                let phi = Math.random() * Math.PI * 2;
 
-            //     star.x = STAR_RADIUS * Math.sin(theta) * Math.cos(phi);
-            //     star.y = STAR_RADIUS * Math.sin(theta) * Math.sin(phi);
-            //     star.z = STAR_RADIUS * Math.cos(theta);
-            // }
+                star.x = SNOW_RADIUS * Math.sin(theta) * Math.cos(phi);
+                star.y = SNOW_RADIUS * Math.sin(theta) * Math.sin(phi);
+                star.z = SNOW_RADIUS * Math.cos(theta);
+            }
 
             gPush();
             {
@@ -766,29 +953,75 @@ function drawStars() {
 function drawSnowglobe() {
     gPush();
     {
-        gPush();
+
+        gPush(); // Base
         {
-            gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-            gl.bindTexture(gl.TEXTURE_2D, textureArray[5].textureWebGL); // Snow texture
-            gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 5);
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[5].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 1.0);
             
-            gTranslate(0, -3, 0);
-            gScale(2.5, 0.75, 2.5);
-            drawCube();
+            gPush();
+            {
+                gTranslate(0, -3, 0);
+                gScale(2.5, 0.75, 2.5);
+                drawCube();
+            }
+            gPop();
+
+            gPush();
+            {
+                gTranslate(0, -2.275, 0);
+                gRotate(90, 1, 0, 0);
+                gScale(4.5, 4.5, 2.55);
+                drawCylinder();
+            }
+            gPop();
         }
         gPop();
         
-        gPush();
+        gPush(); // Globe
         {
-            gl.activeTexture(gl.TEXTURE0);  // Use texture unit 0
-            gl.bindTexture(gl.TEXTURE_2D, textureArray[6].textureWebGL); // Snow texture
-            gl.uniform1i(gl.getUniformLocation(program, "uTexture"), 6);
+            gl.activeTexture(gl.TEXTURE0);  
+            gl.bindTexture(gl.TEXTURE_2D, textureArray[6].textureWebGL); 
+            gl.uniform1i(gl.getUniformLocation(program, "useTextures"), 0);
+            gl.uniform1f(gl.getUniformLocation(program, "alpha"), 0.4);
             
-            gTranslate(0, 1, 0);
+            gTranslate(0, 1, 0); 
             gScale(3, 3, 3)
             drawSphere();
         }
         gPop();
     }
     gPop();
+}
+
+function drawScene() {
+    gPush();
+	{
+        
+
+        gTranslate(0, 0.9, 0);
+        gScale(0.5, 0.5, 0.5);
+        gPush();
+        {
+            gPush();
+            {
+                currentRotation[2] = currentRotation[2] + 50*dt;
+                gRotate(currentRotation[2],0,0,1);
+                gTranslate(0, 3.5, 0);
+                gRotate(-90, 0, 1, 0);
+                gRotate(90, 1, 0, 0);
+                gScale(0.25, 0.25, 0.25);
+                drawPenguin();
+            }
+            gPop();
+            drawSnowTerrain();
+            drawSnow();
+        }
+        gPop();
+    }
+	gPop();
+
+    drawSnowglobe();
 }
