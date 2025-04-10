@@ -1,108 +1,261 @@
 import numpy as np
 import sys
 
-class RayTracer:
-    def __init__(self, filename):
-        self.filename = filename
-        self.dict = {}
-        self.image = None
+CAMERA_POS = [0.0, 0.0, 0.0]
 
-    def parse_input(self):
-        with open(self.filename, 'r') as file:
-            lines = file.readlines()
-            details = []
-            for line in lines:
-                strip_line = line.strip()
-                if strip_line:
-                    details.append(strip_line)
+class Sphere:
+    def __init__(self, data):
+        self.name = data[1]
+        self.xPos = float(data[2])
+        self.yPos = float(data[3])
+        self.zPos = float(data[4])
+        self.xScale = float(data[5])
+        self.yScale = float(data[6])
+        self.zScale = float(data[7])
+        self.color = [float(data[8]), float(data[9]), float(data[10])]
+        self.ka = float(data[11])
+        self.kd = float(data[12])
+        self.ks = float(data[13])
+        self.kr = float(data[14])
+        self.n = float(data[15])
 
-        for line in details:
-            tokens = line.split()
-            if tokens[0] == "NEAR":
-                self.dict["near"] = float(tokens[1])
-            elif tokens[0] == "LEFT":
-                self.dict["left"] = float(tokens[1])
-            elif tokens[0] == "RIGHT":
-                self.dict["right"] = float(tokens[1])
-            elif tokens[0] == "BOTTOM":
-                self.dict["bottom"] = float(tokens[1])
-            elif tokens[0] == "TOP":
-                self.dict["top"] = float(tokens[1])
-            elif tokens[0] == "RES":
-                self.dict["res_x"], self.dict["res_y"] = int(tokens[1]), int(tokens[2])
-            elif tokens[0] == "SPHERE": 
-                self.dict.setdefault("spheres", []).append(self.parse_sphere(tokens))
-            elif tokens[0] == "LIGHT":
-                self.dict.setdefault("lights", []).append(self.parse_light(tokens))
-            elif tokens[0] == "BACK":
-                self.dict["background"] = list(map(float, tokens[1:4]))
-            elif tokens[0] == "AMBIENT":
-                self.dict["ambient"] = list(map(float, tokens[1:4]))
-            elif tokens[0] == "OUTPUT":
-                self.dict["output"] = tokens[1]
+class Light:
+    def __init__(self, data):
+        self.name = data[1]
+        self.pos = [float(data[2]), float(data[3]), float(data[4])]
+        self.colour = [float(data[5]), float(data[6]), float(data[7])]
 
-    def parse_sphere(self, tokens):
-        """Parse sphere attributes."""
-        return {
-            "name": tokens[1],
-            "position": np.array(list(map(float, tokens[2:5]))),
-            "scale": np.array(list(map(float, tokens[5:8]))),
-            "color": np.array(list(map(float, tokens[8:11]))),
-            "ka": float(tokens[11]),
-            "kd": float(tokens[12]),
-            "ks": float(tokens[13]),
-            "kr": float(tokens[14]),
-            "specular_exp": int(tokens[15])
-        }
+class Ray:
+    def __init__(self, origin, direction):
+        self.origin = origin
+        self.direction = direction / np.linalg.norm(direction)
+
+def magnitude(v):
+    return (v[0]**2 + v[1]**2 + v[2]**2)**(1/2)
+
+def normalize(v):
+    return v / magnitude(v)
+
+def hitSphere(ray, sphere, invM, homoOrigin, homoDir):
+    # Transform ray origin and direction into the sphere's coordinate system.
+    invS = np.matmul(invM, homoOrigin)[:3]
+    invC = np.matmul(invM, homoDir)[:3]
     
-    def parse_light(self, tokens):
-        """Parse light source attributes."""
-        return {
-            "name": tokens[1],
-            "position": np.array(list(map(float, tokens[2:5]))),
-            "intensity": np.array(list(map(float, tokens[5:8])))
-        }
+    # Compute quadratic coefficients for the intersection equation.
+    a = np.dot(invC, invC)  # equivalent to magnitude(invC)**2 but more efficient
+    b = np.dot(invS, invC)
+    c = np.dot(invS, invS) - 1  # Sphere is unit sphere in local coordinates.
     
-    def generate_image(self):
-        """Initialize the image buffer with background color."""
-        res_x, res_y = self.dict["res_x"], self.dict["res_y"]
-        self.image = np.zeros((res_y, res_x, 3))
-        bg_color = np.array(self.dict["background"])
-        self.image[:, :] = bg_color
+    discriminant = b * b - a * c
+    if discriminant < 0:
+        return []  # No real roots, so no intersections.
+    else:
+        # Compute both intersection distances.
+        sqrt_disc = np.sqrt(discriminant)
+        t1 = (-b / a + sqrt_disc) / a
+        t2 = (-b / a - sqrt_disc) / a
+        return [t1, t2]
     
-    def render(self):
-        """Perform ray tracing and save the final image."""
-        self.generate_image()
-        # Implement ray tracing logic here
-        self.save_image_p3()
-        self.save_image_p6()
+def getReflectedRay(incident, P, N):
+    normN = normalize(N)
+    # Reflect the incident direction using the reflection formula.
+    reflected_direction = incident.direction + (-2 * np.dot(normN, incident.direction) * normN)
+    # Create new Ray; increase depth for recursion in ray tracing.
+    return Ray(P, reflected_direction, incident.depth + 1)
 
-    def save_image_p3(self):
-        """Save the image in P3 (text) PPM format."""
-        res_x, res_y = self.dict["res_x"], self.dict["res_y"]
-        output_filename = self.dict["output"] + "_P3.ppm"
-        print(f"Saving image {output_filename}: {res_x} x {res_y}")
-        with open(output_filename, "w") as f:
-            f.write(f"P3\n{res_x} {res_y}\n255\n")
-            for row in self.image:
-                for pixel in row:
-                    f.write(f"{pixel[0]} {pixel[1]} {pixel[2]} ")
-                f.write("\n")
+def contributesLight(startSphere, endSphere, side, distToIntersect, dirToLight):
+    # Compute squared distance to the light to avoid an extra square root.
+    distToLight = np.dot(dirToLight, dirToLight)
+    hitNear = (side == "near")
+    hitSphere = (endSphere is not None)
+    # Check whether the same sphere is hit (self-shadow).
+    hitSelf = hitSphere and (startSphere.name == endSphere.name)
 
-    def save_image_p6(self):
-        """Save the image in P6 (binary) PPM format."""
-        res_x, res_y = self.dict["res_x"], self.dict["res_y"]
-        output_filename = self.dict["output"] + "_P6.ppm"
-        print(f"Saving image {output_filename}: {res_x} x {res_y}")
-        with open(output_filename, "wb") as f:
-            f.write(f"P6\n{res_x} {res_y}\n255\n".encode())
-            f.write(self.image.tobytes())
+    if not hitSphere and hitNear:
+        # Light reaches the surface without hitting any other sphere.
+        return True
+    elif hitSelf and (not hitNear) and (distToLight < distToIntersect):
+        # Light originates inside the sphere hitting the far side.
+        return True
+    elif not hitSelf and hitNear:
+        # A different sphere blocks the light.
+        return False
+    else:
+        return False
+
+def save_imageP6(width, height, fname, pixels):
+    """
+    Save image in binary P6 format.
+    
+    Parameters:
+      width (int): image width
+      height (int): image height
+      fname (str): filename to write to
+      pixels (list or bytearray): flat list of pixel values (in order R, G, B)
+    """
+    max_val = 255
+    print(f"Saving image {fname}: {width} x {height}")
+    
+    try:
+        with open(fname, "wb") as f:
+            # Write the PPM header
+            header = f"P6\n{width} {height}\n{max_val}\n"
+            f.write(header.encode('ascii'))
+            
+            # Write pixel data. The pixels list is assumed to be in row-major order.
+            # Since each pixel is 3 bytes, we can iterate row by row.
+            row_length = width * 3
+            for j in range(height):
+                offset = j * row_length
+                # Convert the current row to a bytes object.
+                # If pixels is already a bytearray or bytes, this step might not be needed.
+                row = bytes(pixels[offset:offset + row_length])
+                f.write(row)
+                
+    except IOError:
+        print(f"Unable to open file '{fname}'")
+        return
+
+
+def save_imageP3(width, height, fname, pixels):
+    """
+    Save image in text P3 format.
+    
+    Parameters:
+      width (int): image width
+      height (int): image height
+      fname (str): filename to write to
+      pixels (list): flat list of pixel values (in order R, G, B)
+    """
+    max_val = 255
+    print(f"Saving image {fname}: {width} x {height}")
+    
+    try:
+        with open(fname, "w") as f:
+            # Write the PPM header
+            f.write("P3\n")
+            f.write(f"{width} {height}\n")
+            f.write(f"{max_val}\n")
+            
+            k = 0
+            # Write pixel values row by row.
+            for j in range(height):
+                row_pixels = []
+                for i in range(width):
+                    r = pixels[k]
+                    g = pixels[k+1]
+                    b = pixels[k+2]
+                    row_pixels.append(f"{r} {g} {b}")
+                    k += 3
+                # Join each pixel's string for the row and write the line.
+                f.write(" ".join(row_pixels) + "\n")
+                
+    except IOError:
+        print(f"Unable to open file '{fname}'")
+        return
+
+def outputPPM(info, spheres, lights, outputFileBase):
+    """
+    Render the scene and save the resulting image as both P3 and P6 PPM files.
+    
+    Parameters:
+      info (dict): Scene parameters (should include keys like 'res', 'right', 'top', 'near', etc.)
+      spheres (list): List of sphere objects for raytracing.
+      lights (list): List of light objects for raytracing.
+      outputFileBase (str): Base name for output files (suffixes will be added for P3 and P6).
+    """
+    width = info["res"]["x"]
+    height = info["res"]["y"]
+    # Create an empty image array (flat) with the appropriate data type.
+    image = np.zeros([width * height * 3])
+
+    # Define the camera basis vectors.
+    u = np.array([1.0, 0.0, 0.0])
+    v = np.array([0.0, 1.0, 0.0])
+    n = np.array([0.0, 0.0, -1.0])
+
+    percentInc = int(height / 10) if height >= 10 else 1
+
+    # Loop over each pixel and compute its color via raytracing.
+    for r in range(height):
+        if r % percentInc == 0:
+            print(f'{(r / height)*100:.0f}% Complete')
+        for c in range(width):
+            # Compute the direction for the current ray.
+            xComp = info["right"] * (2.0 * c / width - 1)
+            yComp = info["top"] * (2.0 * (height - r) / height - 1)
+            zComp = info["near"]
+            direction = xComp * u + yComp * v + zComp * n
+
+            # Create and trace the ray.
+            ray = Ray(CAMERA_POS, direction)
+            pixelColour = raytrace(ray, spheres, lights, info)
+            # Clamp colour components to [0,1] then scale to [0,255]
+            clippedPix = np.clip(pixelColour, 0, 1) * 255
+
+            # Write the colour values into the image array.
+            idx = 3 * (r * width + c)
+            image[idx]     = int(clippedPix[0])
+            image[idx + 1] = int(clippedPix[1])
+            image[idx + 2] = int(clippedPix[2])
+
+    # Prepare output filenames for P3 and P6.
+    outputFileP6 = outputFileBase + "_P6.ppm"
+    outputFileP3 = outputFileBase + "_P3.ppm"
+    
+    # Save the image in both binary (P6) and text (P3) PPM formats.
+    save_imageP6(width, height, outputFileP6, image)
+    save_imageP3(width, height, outputFileP3, image)
+    
+    print("Render Complete. Output files:", outputFileP6, "and", outputFileP3)
+
+def main():
+    filename = sys.argv[1]
+    scene = {}
+    sphereList = []
+    lightList = []
+    outputFilename = None
+
+    with open(filename, 'r') as file:
+        lines = file.readlines()
+        details = [line.strip() for line in lines if line.strip()]
+
+    for line in details:
+        tokens = line.split()
+        if tokens[0] == "NEAR":
+            scene["near"] = float(tokens[1])
+        elif tokens[0] == "LEFT":
+            scene["left"] = float(tokens[1])
+        elif tokens[0] == "RIGHT":
+            scene["right"] = float(tokens[1])
+        elif tokens[0] == "BOTTOM":
+            scene["bottom"] = float(tokens[1])
+        elif tokens[0] == "TOP":
+            scene["top"] = float(tokens[1])
+        elif tokens[0] == "RES":
+            scene["res"], scene["res"]["x"], scene["res"]["y"] = {}, int(tokens[1]), int(tokens[2])
+        elif tokens[0] == "SPHERE": 
+            sphereList.append(Sphere(tokens))
+        elif tokens[0] == "LIGHT":
+            lightList.append(Light(tokens))
+        elif tokens[0] == "BACK":
+            scene["background"] = [float(tokens[1]), float(tokens[2]), float(tokens[3])]
+        elif tokens[0] == "AMBIENT":
+            scene["ambient"] = [float(tokens[1]), float(tokens[2]), float(tokens[3])]
+        elif tokens[0] == "OUTPUT":
+            outputFilename = tokens[1]
+
+    if "res" not in scene:
+        scene["res"] = {"x": 128, "y": 128}
+    if outputFilename is None:
+        outputFilename = "output_scene"
+    
+    # Call printPPM to render and save using both P3 and P6 formats.
+    outputPPM(scene, sphereList, lightList, outputFilename)
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python RayTracer.py <input_file>")
         sys.exit(1)
 
-    ray_tracer = RayTracer(sys.argv[1])
-    ray_tracer.parse_input()
-    ray_tracer.render()
+    main()
