@@ -1,6 +1,8 @@
 import numpy as np
+import os
 import sys
 
+MAX_DEPTH = 5
 CAMERA_POS = [0.0, 0.0, 0.0]
 
 class Sphere:
@@ -23,12 +25,13 @@ class Light:
     def __init__(self, data):
         self.name = data[1]
         self.pos = [float(data[2]), float(data[3]), float(data[4])]
-        self.colour = [float(data[5]), float(data[6]), float(data[7])]
+        self.color = [float(data[5]), float(data[6]), float(data[7])]
 
 class Ray:
-    def __init__(self, origin, direction):
+    def __init__(self, origin, direction, depth = 1):
         self.origin = origin
-        self.direction = direction / np.linalg.norm(direction)
+        self.direction = direction 
+        self.depth = depth
 
 def magnitude(v):
     return (v[0]**2 + v[1]**2 + v[2]**2)**(1/2)
@@ -52,8 +55,8 @@ def hitSphere(ray, sphere, invM, homoOrigin, homoDir):
     else:
         # Compute both intersection distances.
         sqrt_disc = np.sqrt(discriminant)
-        t1 = (-b / a + sqrt_disc) / a
-        t2 = (-b / a - sqrt_disc) / a
+        t1 = (-b + sqrt_disc) / a
+        t2 = (-b - sqrt_disc) / a
         return [t1, t2]
     
 def getReflectedRay(incident, P, N):
@@ -66,146 +69,202 @@ def getReflectedRay(incident, P, N):
 def contributesLight(startSphere, endSphere, side, distToIntersect, dirToLight):
     # Compute squared distance to the light to avoid an extra square root.
     distToLight = np.dot(dirToLight, dirToLight)
-    hitNear = (side == "near")
+    hitnear = (side == "near")
     hitSphere = (endSphere is not None)
     # Check whether the same sphere is hit (self-shadow).
     hitSelf = hitSphere and (startSphere.name == endSphere.name)
 
-    if not hitSphere and hitNear:
+    if not hitSphere and hitnear:
         # Light reaches the surface without hitting any other sphere.
         return True
-    elif hitSelf and (not hitNear) and (distToLight < distToIntersect):
+    elif hitSelf and (not hitnear) and (distToLight < distToIntersect):
         # Light originates inside the sphere hitting the far side.
         return True
-    elif not hitSelf and hitNear:
+    elif not hitSelf and hitnear:
         # A different sphere blocks the light.
         return False
     else:
         return False
+    
+def getLightValue(light, spheres, P, hitSphereObj, N, near, side):
+    # Compute vector from intersection point to the light.
+    L = light.pos - P
+    rayToLight = Ray(P, L)
+    # Get the first intersection along the shadow ray.
+    t, nearestSphere, _, _ = getnearestIntersect(spheres, rayToLight)
+    if not contributesLight(hitSphereObj, nearestSphere, side, t, L):
+        return [0, 0, 0]  # The light is blocked (in shadow).
+    
+    normN = normalize(N)
+    normL = normalize(L)
+    # Flip normal if the hit is on the "far" side.
+    if side == "far":
+        normN = -normN
 
-def save_imageP6(width, height, fname, pixels):
-    """
-    Save image in binary P6 format.
+    diffuse_intensity = np.dot(normN, normL)
+    diffuse = hitSphereObj.kd * np.multiply(light.color, diffuse_intensity) * hitSphereObj.color
     
-    Parameters:
-      width (int): image width
-      height (int): image height
-      fname (str): filename to write to
-      pixels (list or bytearray): flat list of pixel values (in order R, G, B)
-    """
-    max_val = 255
-    print(f"Saving image {fname}: {width} x {height}")
+    # Specular reflection: compute the view direction and reflection vector.
+    # V points from the point P toward the camera origin (assumed at [0, 0, 0] for simplicity).
+    V = -P  # assuming camera at origin
+    normV = normalize(V)
+    R = 2 * np.multiply(np.dot(normN, L), normN) - L
+    normR = normalize(R)
+    # Raise the dot product to the power of the sphere's shininess coefficient.
+    spec_intensity = np.dot(normR, normV) ** hitSphereObj.n
+    specular = hitSphereObj.ks * np.multiply(light.color, spec_intensity)
     
-    try:
-        with open(fname, "wb") as f:
-            # Write the PPM header
-            header = f"P6\n{width} {height}\n{max_val}\n"
-            f.write(header.encode('ascii'))
-            
-            # Write pixel data. The pixels list is assumed to be in row-major order.
-            # Since each pixel is 3 bytes, we can iterate row by row.
-            row_length = width * 3
-            for j in range(height):
-                offset = j * row_length
-                # Convert the current row to a bytes object.
-                # If pixels is already a bytearray or bytes, this step might not be needed.
-                row = bytes(pixels[offset:offset + row_length])
-                f.write(row)
+    return diffuse + specular
+
+def getnearestIntersect(spheres, ray, near=-1):
+    t_closest = 100000  # Use a large number as the initial "infinite" distance.
+    closestSphere = None
+    
+    # Loop through each sphere to find the nearest intersection.
+    for sphere in spheres:
+        # Compute the inverse transformation matrix for the sphere.
+        # If possible, precompute and store invM as a property of the sphere.
+        invM = [
+            [1/sphere.xScale, 0, 0, -sphere.xPos/sphere.xScale],
+            [0, 1/sphere.yScale, 0, -sphere.yPos/sphere.yScale],
+            [0, 0, 1/sphere.zScale, -sphere.zPos/sphere.zScale],
+            [0, 0, 0, 1]
+        ]
+        homoOrigin = np.append(ray.origin, 1)
+        homoDir = np.append(ray.direction, 0)
+        hits = hitSphere(ray, sphere, invM, homoOrigin, homoDir)
+        
+        # Process each intersection distance.
+        for hit in hits:
+            # Compute the distance along the ray's direction from the origin.
+            # When 'near' is defined (not -1), check that the intersection is in front of the near plane.
+            zDist = 0
+            if near != -1:
+                distAlongLine = ray.direction * hit
+                zDist = np.dot(np.array([0, 0, -1]), distAlongLine)
+            if hit > 0.000001 and hit < t_closest and (zDist > near or ray.depth != 1):
+                t_closest = hit
+                closestSphere = sphere
                 
-    except IOError:
-        print(f"Unable to open file '{fname}'")
-        return
-
-
-def save_imageP3(width, height, fname, pixels):
-    """
-    Save image in text P3 format.
+    invN = None
+    side = None
     
-    Parameters:
-      width (int): image width
-      height (int): image height
-      fname (str): filename to write to
-      pixels (list): flat list of pixel values (in order R, G, B)
-    """
-    max_val = 255
-    print(f"Saving image {fname}: {width} x {height}")
+    # If a sphere was hit, compute the normal at the intersection point.
+    if closestSphere is not None:
+        # Construct the sphere's transformation matrix.
+        M = [
+            [closestSphere.xScale, 0, 0, closestSphere.xPos],
+            [0, closestSphere.yScale, 0, closestSphere.yPos],
+            [0, 0, closestSphere.zScale, closestSphere.zPos],
+            [0, 0, 0, 1]
+        ]
+        # Compute the intersection point.
+        P = ray.origin + ray.direction * t_closest
+        # Compute the untransformed (local) normal.
+        center = np.array([closestSphere.xPos, closestSphere.yPos, closestSphere.zPos])
+        N = P - center
+        
+        # Transform the normal using the inverse transpose of M.
+        homoN = np.append(N, 1)
+        inversed = np.matmul(homoN, np.linalg.inv(M))
+        invN = np.matmul(np.linalg.inv(np.transpose(M)), inversed)[:3]
+        
+        # Determine which side of the sphere was hit.
+        side = "far" if np.dot(ray.direction, invN) > 0 else "near"
     
-    try:
-        with open(fname, "w") as f:
-            # Write the PPM header
-            f.write("P3\n")
-            f.write(f"{width} {height}\n")
-            f.write(f"{max_val}\n")
-            
-            k = 0
-            # Write pixel values row by row.
-            for j in range(height):
-                row_pixels = []
-                for i in range(width):
-                    r = pixels[k]
-                    g = pixels[k+1]
-                    b = pixels[k+2]
-                    row_pixels.append(f"{r} {g} {b}")
-                    k += 3
-                # Join each pixel's string for the row and write the line.
-                f.write(" ".join(row_pixels) + "\n")
-                
-    except IOError:
-        print(f"Unable to open file '{fname}'")
-        return
+    return (t_closest, closestSphere, invN, side)
+
+def raytrace(ray, spheres, lights, sceneInfo):
+    # Stop recursion if maximum depth is exceeded.
+    if ray.depth > MAX_DEPTH:
+        return np.array([0, 0, 0])
+    
+    # Find the nearest intersection along the ray.
+    nearestHit, closestSphere, N, side = getnearestIntersect(spheres, ray, sceneInfo["near"])
+    
+    # If no sphere is intersected, return the backgroundground color (if at the primary ray level).
+    if closestSphere is None:
+        if ray.depth == 1:
+            return sceneInfo["background"]
+        else:
+            return np.array([0, 0, 0])
+    
+    # Compute the intersection point.
+    P = ray.origin + ray.direction * nearestHit
+    
+    # Compute the light contributions (diffuse and specular) from each light source.
+    diffuseLight = np.array([0, 0, 0])
+    for light in lights:
+        diffuseLight = np.add(diffuseLight, getLightValue(light, spheres, P, closestSphere, N, sceneInfo["near"], side))
+    
+    # Ambient light contribution based on the sphere's ambient coefficient.
+    ambient = closestSphere.ka * np.multiply(sceneInfo["ambient"], closestSphere.color)
+    
+    # Compute the reflected ray and combine its contribution.
+    refRay = getReflectedRay(ray, P, N)
+    reflection = closestSphere.kr * np.array(raytrace(refRay, spheres, lights, sceneInfo))
+    
+    return ambient + diffuseLight + reflection
 
 def outputPPM(info, spheres, lights, outputFileBase):
-    """
-    Render the scene and save the resulting image as both P3 and P6 PPM files.
-    
-    Parameters:
-      info (dict): Scene parameters (should include keys like 'res', 'right', 'top', 'near', etc.)
-      spheres (list): List of sphere objects for raytracing.
-      lights (list): List of light objects for raytracing.
-      outputFileBase (str): Base name for output files (suffixes will be added for P3 and P6).
-    """
     width = info["res"]["x"]
     height = info["res"]["y"]
-    # Create an empty image array (flat) with the appropriate data type.
-    image = np.zeros([width * height * 3])
-
+    
+    # Create headers for P6 (binary) and P3 (ASCII) formats.
+    ppm_header_p6 = f"P6\n{width} {height}\n255\n"
+    ppm_header_p3 = f"P3\n{width} {height}\n255\n"
+    
+    # Create an empty image array.
+    image = np.zeros(width * height * 3, dtype=np.uint8)
+    
     # Define the camera basis vectors.
-    u = np.array([1.0, 0.0, 0.0])
-    v = np.array([0.0, 1.0, 0.0])
-    n = np.array([0.0, 0.0, -1.0])
-
+    u = np.array([1, 0, 0])
+    v = np.array([0, 1, 0])
+    n = np.array([0, 0, -1])
+    
     percentInc = int(height / 10) if height >= 10 else 1
-
-    # Loop over each pixel and compute its color via raytracing.
+    
+    # Loop over each pixel, compute its color via raytracing.
     for r in range(height):
         if r % percentInc == 0:
-            print(f'{(r / height)*100:.0f}% Complete')
+            print(f'{(r / height) * 100:.0f}% Complete')
         for c in range(width):
-            # Compute the direction for the current ray.
+            # Map pixel coordinates to scene coordinates.
             xComp = info["right"] * (2.0 * c / width - 1)
             yComp = info["top"] * (2.0 * (height - r) / height - 1)
             zComp = info["near"]
             direction = xComp * u + yComp * v + zComp * n
 
-            # Create and trace the ray.
             ray = Ray(CAMERA_POS, direction)
             pixelColour = raytrace(ray, spheres, lights, info)
-            # Clamp colour components to [0,1] then scale to [0,255]
+            index = 3 * (r * width + c)
             clippedPix = np.clip(pixelColour, 0, 1) * 255
-
-            # Write the colour values into the image array.
-            idx = 3 * (r * width + c)
-            image[idx]     = int(clippedPix[0])
-            image[idx + 1] = int(clippedPix[1])
-            image[idx + 2] = int(clippedPix[2])
-
-    # Prepare output filenames for P3 and P6.
-    outputFileP6 = outputFileBase + "_P6.ppm"
-    outputFileP3 = outputFileBase + "_P3.ppm"
+            image[index] = int(clippedPix[0])
+            image[index + 1] = int(clippedPix[1])
+            image[index + 2] = int(clippedPix[2])
     
-    # Save the image in both binary (P6) and text (P3) PPM formats.
-    save_imageP6(width, height, outputFileP6, image)
-    save_imageP3(width, height, outputFileP3, image)
+    # Strip the extension from the base filename and insert the suffix before the extension.
+    base, ext = os.path.splitext(outputFileBase)
+    outputFileP6 = f"{base}_P6{ext}"
+    outputFileP3 = f"{base}_P3{ext}"
+    
+    # Save the image in binary P6 format.
+    with open(outputFileP6, 'wb') as f:
+        f.write(bytearray(ppm_header_p6, 'ascii'))
+        image.tofile(f)
+    
+    # Save the image in text-based P3 format.
+    with open(outputFileP3, 'w') as f:
+        f.write(ppm_header_p3)
+        for r in range(height):
+            row_pixels = []
+            for c in range(width):
+                index = 3 * (r * width + c)
+                r_val = image[index]
+                g_val = image[index + 1]
+                b_val = image[index + 2]
+                row_pixels.append(f"{r_val} {g_val} {b_val}")
+            f.write(" ".join(row_pixels) + "\n")
     
     print("Render Complete. Output files:", outputFileP6, "and", outputFileP3)
 
